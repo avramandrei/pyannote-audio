@@ -71,8 +71,10 @@ class Pretrained(FeatureExtraction):
 
     def __init__(
         self,
-        validate_dir: Path = None,
-        epoch: int = None,
+        model_path: str,
+        config_path: str,
+        specs_path: str,
+        epoch: int = 0,
         augmentation: Optional[Augmentation] = None,
         duration: float = None,
         step: float = None,
@@ -81,24 +83,9 @@ class Pretrained(FeatureExtraction):
         return_intermediate=None,
         progress_hook=None,
     ):
-
-        try:
-            validate_dir = Path(validate_dir)
-        except TypeError as e:
-            msg = (
-                f'"validate_dir" must be str, bytes or os.PathLike object, '
-                f"not {type(validate_dir).__name__}."
-            )
-            raise TypeError(msg)
-
         strict = epoch is None
-        self.validate_dir = validate_dir.expanduser().resolve(strict=strict)
 
-        train_dir = self.validate_dir.parents[1]
-        root_dir = train_dir.parents[1]
-
-        config_yml = root_dir / "config.yml"
-        config = load_config(config_yml, training=False)
+        config = load_config(Path(config_path), training=False)
 
         # use feature extraction from config.yml configuration file
         self.feature_extraction_ = config["feature_extraction"]
@@ -109,21 +96,13 @@ class Pretrained(FeatureExtraction):
 
         self.feature_extraction_.augmentation = self.augmentation
 
-        specs_yml = train_dir / "specs.yml"
-        specifications = load_specs(specs_yml)
+        specifications = load_specs(Path(specs_path))
 
-        if epoch is None:
-            params_yml = self.validate_dir / "params.yml"
-            params = load_params(params_yml)
-            self.epoch_ = params["epoch"]
-            # keep track of pipeline parameters
-            self.pipeline_params_ = params.get("params", {})
-        else:
-            self.epoch_ = epoch
+        self.epoch = 0
 
         self.preprocessors_ = config["preprocessors"]
 
-        self.weights_pt_ = train_dir / "weights" / f"{self.epoch_:04d}.pt"
+        self.weights_pt_ = Path(model_path)
 
         model = config["get_model_from_specs"](specifications)
         model.load_state_dict(
