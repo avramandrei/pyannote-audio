@@ -131,7 +131,7 @@ class FeatureExtraction:
         msg = "`FeatureExtractions subclasses must implement " "`get_features` method."
         raise NotImplementedError(msg)
 
-    def __call__(self, current_file) -> SlidingWindowFeature:
+    def __call__(self, y, sample_rate) -> SlidingWindowFeature:
         """Extract features from file
 
         Parameters
@@ -146,16 +146,19 @@ class FeatureExtraction:
         """
 
         # load waveform, re-sample, convert to mono, augment, normalize
-        y, sample_rate = self.raw_audio_(current_file, return_sr=True)
+        # y, sample_rate = self.raw_audio_(current_file, return_sr=True)
+        
+        y = y.reshape(-1, 1)
+        # print(y.shape)
 
         # compute features
-        features = self.get_features(y.data, sample_rate)
+        features = self.get_features(y, sample_rate)
 
         # basic quality check
-        if np.any(np.isnan(features)):
-            uri = get_unique_identifier(current_file)
-            msg = f'Features extracted from "{uri}" contain NaNs.'
-            warnings.warn(msg.format(uri=uri))
+        # if np.any(np.isnan(features)):
+           # uri = get_unique_identifier(current_file)
+           # msg = f'Features extracted from "{uri}" contain NaNs.'
+            #warnings.warn(msg.format(uri=uri))
 
         # wrap features in a `SlidingWindowFeature` instance
         return SlidingWindowFeature(features, self.sliding_window)
